@@ -1,0 +1,20 @@
+name: Validar manifiestos
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: kubeconform
+        run: |
+          docker run --rm -v "$PWD:/work" ghcr.io/yannh/kubeconform:v0.6.7 \
+            -summary -ignore-missing-schemas /work/k8s
