@@ -8,8 +8,9 @@ x-rabbitmq-url: &rabbitmq-url amqp://${RABBITMQ_USER:-quadra}:${RABBITMQ_PASSWOR
 services:
   mongodb:
     image: mongo:8
+    # Solo accesible desde este PC (127.0.0.1): MongoDB no tiene contraseña en desarrollo
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongo-data:/data/db
     healthcheck:
@@ -25,8 +26,8 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-quadra}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-quadra}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 5s
@@ -46,10 +47,42 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  groups-service:
+    build: ../groups-service
+    environment:
+      GRPC_PORT: "50051"
+      MONGO_URL: mongodb://mongodb:27017
+      MONGO_DB: groups_db
+      RABBITMQ_URL: *rabbitmq-url
+      BALANCES_GRPC_URL: balances-service:50052
+      # Crea los usuarios y el grupo de ejemplo si no existen
+      SEED_DEMO: "true"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  balances-service:
+    build: ../balances-service
+    environment:
+      GRPC_PORT: "50052"
+      MONGO_URL: mongodb://mongodb:27017
+      MONGO_DB: balances_db
+      RABBITMQ_URL: *rabbitmq-url
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   bff-gateway:
     build: ../bff-gateway
+    # Solo desde este PC: hasta el login de la Fase 4, quien llega al BFF actúa como DEV_USER_ID
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       PORT: "3000"
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret}
@@ -58,9 +91,15 @@ services:
       GROUPS_GRPC_URL: groups-service:50051
       BALANCES_GRPC_URL: balances-service:50052
       MCP_SERVER_URL: http://mcp-server:3001
+      # Provisional hasta el login de la Fase 4: todas las peticiones son de este usuario
+      DEV_USER_ID: ${DEV_USER_ID:-u-martin}
     depends_on:
       rabbitmq:
         condition: service_healthy
+      groups-service:
+        condition: service_started
+      balances-service:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
