@@ -1,0 +1,67 @@
+# Desarrollo local. Se ejecuta desde infra-k8s, con todos los repos clonados en la misma carpeta:
+#   docker compose up --build
+# Los servicios se van agregando a medida que se implementan (Fase 2).
+name: quadracount
+
+x-rabbitmq-url: &rabbitmq-url amqp://${RABBITMQ_USER:-quadra}:${RABBITMQ_PASSWORD:-quadra}@rabbitmq:5672
+
+services:
+  mongodb:
+    image: mongo:8
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    environment:
+      # El usuario guest de RabbitMQ solo funciona desde localhost, por eso se crea otro
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-quadra}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-quadra}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+
+  activity-service:
+    build: ../activity-service
+    environment:
+      MONGO_URL: mongodb://mongodb:27017
+      MONGO_DB: activity_db
+      RABBITMQ_URL: *rabbitmq-url
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  bff-gateway:
+    build: ../bff-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      RABBITMQ_URL: *rabbitmq-url
+      GROUPS_GRPC_URL: groups-service:50051
+      BALANCES_GRPC_URL: balances-service:50052
+      MCP_SERVER_URL: http://mcp-server:3001
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
