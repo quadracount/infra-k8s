@@ -1,0 +1,79 @@
+# MongoDB: una instancia con una base por servicio (groups_db, balances_db, activity_db).
+# StatefulSet + PersistentVolumeClaim para que los datos sobrevivan a reinicios del pod.
+# El usuario administrador se crea la primera vez, con las credenciales del Secret.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: quadracount
+  labels:
+    app.kubernetes.io/name: mongodb
+    app.kubernetes.io/part-of: quadracount
+spec:
+  clusterIP: None # headless: nombre DNS estable para el pod del StatefulSet
+  selector:
+    app.kubernetes.io/name: mongodb
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: 27017
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+  namespace: quadracount
+  labels:
+    app.kubernetes.io/name: mongodb
+    app.kubernetes.io/part-of: quadracount
+spec:
+  serviceName: mongodb
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mongodb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mongodb
+        app.kubernetes.io/part-of: quadracount
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:8
+          ports:
+            - name: mongodb
+              containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: MONGO_USER }
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: MONGO_PASSWORD }
+          readinessProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 768Mi }
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

@@ -1,0 +1,19 @@
+# Configuración no secreta compartida por los servicios.
+# Los secretos (contraseñas, claves) están en el Secret quadracount-secrets,
+# que NO está en el repo: se crea con scripts/create-secret.sh.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: quadracount-config
+  namespace: quadracount
+data:
+  GROUPS_GRPC_URL: groups-service:50051
+  BALANCES_GRPC_URL: balances-service:50052
+  MCP_SERVER_URL: http://mcp-server:3001
+  BFF_INTERNAL_URL: http://bff-gateway:3000
+  # Crea los usuarios y el grupo de ejemplo al arrancar groups-service
+  SEED_DEMO: "true"
+  # Provisional hasta el login de la Fase 4
+  DEV_USER_ID: u-martin
+  # Fase 5: "llm" o "fallback" (parser por reglas, sin LLM)
+  LLM_MODE: fallback

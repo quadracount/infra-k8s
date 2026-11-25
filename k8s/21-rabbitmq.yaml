@@ -1,0 +1,87 @@
+# RabbitMQ con la interfaz de administración (puerto 15672).
+# StatefulSet + PVC: las colas son durables y los mensajes pendientes (por ejemplo,
+# los gasto.creado mientras balances-service está apagado) sobreviven a un reinicio.
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: quadracount
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/part-of: quadracount
+spec:
+  selector:
+    app.kubernetes.io/name: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+    - name: management
+      port: 15672
+      targetPort: 15672
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: quadracount
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/part-of: quadracount
+spec:
+  serviceName: rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rabbitmq
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rabbitmq
+        app.kubernetes.io/part-of: quadracount
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:4-management
+          ports:
+            - name: amqp
+              containerPort: 5672
+            - name: management
+              containerPort: 15672
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: RABBITMQ_USER }
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: RABBITMQ_PASSWORD }
+          startupProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "ping"]
+            periodSeconds: 5
+            timeoutSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "ping"]
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 768Mi }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/rabbitmq
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

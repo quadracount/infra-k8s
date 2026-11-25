@@ -1,0 +1,3 @@
+# Los scripts tienen que tener fin de línea LF aunque el repo se clone en Windows;
+# con CRLF, Git Bash falla con errores del tipo "command not found".
+*.sh text eol=lf

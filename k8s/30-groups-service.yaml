@@ -1,0 +1,87 @@
+# groups-service (NestJS, gRPC 50051): usuarios, grupos, miembros y gastos.
+# 1 réplica: las conexiones gRPC son persistentes y un Service ClusterIP no las
+# reparte entre réplicas (haría falta un balanceo por petición, p. ej. un service mesh).
+apiVersion: v1
+kind: Service
+metadata:
+  name: groups-service
+  namespace: quadracount
+  labels:
+    app.kubernetes.io/name: groups-service
+    app.kubernetes.io/part-of: quadracount
+spec:
+  selector:
+    app.kubernetes.io/name: groups-service
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: groups-service
+  namespace: quadracount
+  labels:
+    app.kubernetes.io/name: groups-service
+    app.kubernetes.io/part-of: quadracount
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: groups-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: groups-service
+        app.kubernetes.io/part-of: quadracount
+    spec:
+      containers:
+        - name: groups-service
+          image: quadracount/groups-service:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50051
+          env:
+            - name: GRPC_PORT
+              value: "50051"
+            - name: MONGO_DB
+              value: groups_db
+            # Las variables que se usan en $(...) tienen que estar definidas antes
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: MONGO_USER }
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: MONGO_PASSWORD }
+            - name: MONGO_URL
+              value: mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@mongodb:27017/?authSource=admin
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: RABBITMQ_USER }
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: RABBITMQ_PASSWORD }
+            - name: RABBITMQ_URL
+              value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASSWORD)@rabbitmq:5672
+            - name: BALANCES_GRPC_URL
+              valueFrom:
+                configMapKeyRef: { name: quadracount-config, key: BALANCES_GRPC_URL }
+            - name: SEED_DEMO
+              valueFrom:
+                configMapKeyRef: { name: quadracount-config, key: SEED_DEMO }
+          # Probes gRPC nativos de Kubernetes (grpc.health.v1)
+          startupProbe:
+            grpc: { port: 50051 }
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            grpc: { port: 50051 }
+            periodSeconds: 10
+          livenessProbe:
+            grpc: { port: 50051 }
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 384Mi }

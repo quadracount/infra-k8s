@@ -1,0 +1,48 @@
+# activity-service (Python): historial de actividad.
+# No expone puertos (todo pasa por RabbitMQ), así que no tiene Service ni probes de red:
+# si el proceso termina por un error, Kubernetes lo reinicia.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: activity-service
+  namespace: quadracount
+  labels:
+    app.kubernetes.io/name: activity-service
+    app.kubernetes.io/part-of: quadracount
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: activity-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: activity-service
+        app.kubernetes.io/part-of: quadracount
+    spec:
+      containers:
+        - name: activity-service
+          image: quadracount/activity-service:dev
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MONGO_DB
+              value: activity_db
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: MONGO_USER }
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: MONGO_PASSWORD }
+            - name: MONGO_URL
+              value: mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@mongodb:27017/?authSource=admin
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: RABBITMQ_USER }
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: quadracount-secrets, key: RABBITMQ_PASSWORD }
+            - name: RABBITMQ_URL
+              value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASSWORD)@rabbitmq:5672
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }

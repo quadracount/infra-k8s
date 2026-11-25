@@ -1,6 +1,7 @@
 # Desarrollo local. Se ejecuta desde infra-k8s, con todos los repos clonados en la misma carpeta:
 #   docker compose up --build
-# Los servicios se van agregando a medida que se implementan (Fase 2).
+# Las imágenes se llaman quadracount/<repo>:dev, igual que en los manifiestos de k8s/.
+# Falta mcp-server (Fase 5).
 name: quadracount
 
 x-rabbitmq-url: &rabbitmq-url amqp://${RABBITMQ_USER:-quadra}:${RABBITMQ_PASSWORD:-quadra}@rabbitmq:5672
@@ -36,6 +37,7 @@ services:
 
   activity-service:
     build: ../activity-service
+    image: quadracount/activity-service:dev
     environment:
       MONGO_URL: mongodb://mongodb:27017
       MONGO_DB: activity_db
@@ -49,6 +51,7 @@ services:
 
   groups-service:
     build: ../groups-service
+    image: quadracount/groups-service:dev
     environment:
       GRPC_PORT: "50051"
       MONGO_URL: mongodb://mongodb:27017
@@ -66,6 +69,7 @@ services:
 
   balances-service:
     build: ../balances-service
+    image: quadracount/balances-service:dev
     environment:
       GRPC_PORT: "50052"
       MONGO_URL: mongodb://mongodb:27017
@@ -80,6 +84,7 @@ services:
 
   bff-gateway:
     build: ../bff-gateway
+    image: quadracount/bff-gateway:dev
     # Solo desde este PC: hasta el login de la Fase 4, quien llega al BFF actúa como DEV_USER_ID
     ports:
       - "127.0.0.1:3000:3000"
@@ -100,6 +105,13 @@ services:
         condition: service_started
       balances-service:
         condition: service_started
+    restart: unless-stopped
+
+  frontend-app:
+    build: ../frontend-quadracount
+    image: quadracount/frontend-quadracount:dev
+    ports:
+      - "127.0.0.1:8080:80"
     restart: unless-stopped
 
 volumes:
