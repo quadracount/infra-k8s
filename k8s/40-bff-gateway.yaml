@@ -44,7 +44,7 @@ spec:
             - name: http
               containerPort: 3000
           envFrom:
-            # GROUPS_GRPC_URL, BALANCES_GRPC_URL, MCP_SERVER_URL, DEV_USER_ID...
+            # GROUPS_GRPC_URL, BALANCES_GRPC_URL, MCP_SERVER_URL, CORS_ORIGINS...
             - configMapRef:
                 name: quadracount-config
           env:

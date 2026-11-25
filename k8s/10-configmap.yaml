@@ -13,7 +13,7 @@ data:
   BFF_INTERNAL_URL: http://bff-gateway:3000
   # Crea los usuarios y el grupo de ejemplo al arrancar groups-service
   SEED_DEMO: "true"
-  # Provisional hasta el login de la Fase 4
-  DEV_USER_ID: u-martin
+  # Orígenes desde los que el navegador puede llamar al BFF (port-forward del frontend)
+  CORS_ORIGINS: http://localhost:8080
   # Fase 5: "llm" o "fallback" (parser por reglas, sin LLM)
   LLM_MODE: fallback

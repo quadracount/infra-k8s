@@ -85,7 +85,7 @@ services:
   bff-gateway:
     build: ../bff-gateway
     image: quadracount/bff-gateway:dev
-    # Solo desde este PC: hasta el login de la Fase 4, quien llega al BFF actúa como DEV_USER_ID
+    # Solo desde este PC (127.0.0.1), como el resto de los puertos de desarrollo
     ports:
       - "127.0.0.1:3000:3000"
     environment:
@@ -96,8 +96,8 @@ services:
       GROUPS_GRPC_URL: groups-service:50051
       BALANCES_GRPC_URL: balances-service:50052
       MCP_SERVER_URL: http://mcp-server:3001
-      # Provisional hasta el login de la Fase 4: todas las peticiones son de este usuario
-      DEV_USER_ID: ${DEV_USER_ID:-u-martin}
+      # Orígenes desde los que el navegador puede llamar al BFF (frontend en Docker y en `pnpm dev`)
+      CORS_ORIGINS: http://localhost:8080,http://localhost:5173
     depends_on:
       rabbitmq:
         condition: service_healthy

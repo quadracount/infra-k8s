@@ -29,7 +29,9 @@ docker compose down          # agregar -v para borrar también los datos de Mong
 
 Están MongoDB, RabbitMQ, groups-service, balances-service, activity-service, bff-gateway y el frontend (http://localhost:8080). Falta mcp-server (Fase 5).
 
-groups-service arranca con los datos de ejemplo (usuarios y grupo `g-depto`, sin gastos). Mientras no exista el login, todas las peticiones al BFF son del usuario `DEV_USER_ID` (Martín).
+groups-service arranca con los datos de ejemplo de la sección 1 del plan: 6 usuarios (`martin@quadracount.dev`, `camila@…`, `sofia@…`, `diego@…`, `valentina@…`, `tomas@…`, todos con la contraseña `quadra123`), los 3 grupos de Martín, sus gastos y el pago de Diego. Saldos esperados en el depto: Martín +12.000, Camila +1.000, Sofía −5.000, Diego −8.000.
+
+Si tu base de datos tiene datos de una versión anterior, empieza de cero para no mezclarlos: `docker compose down -v` (o `kubectl delete namespace quadracount` en Kubernetes).
 
 | Qué | Dónde |
 |---|---|
@@ -119,7 +121,7 @@ El Secret `quadracount-secrets` **no está en el repo**. Lo crea `scripts/create
 | Archivo | Contenido |
 |---|---|
 | `00-namespace.yaml` | Namespace `quadracount` |
-| `10-configmap.yaml` | URLs entre servicios, `SEED_DEMO`, `DEV_USER_ID`, `LLM_MODE` |
+| `10-configmap.yaml` | URLs entre servicios, `SEED_DEMO`, `CORS_ORIGINS`, `LLM_MODE` |
 | `20-mongodb.yaml` | StatefulSet con PVC de 1 Gi y Service headless |
 | `21-rabbitmq.yaml` | StatefulSet con PVC (los mensajes pendientes sobreviven a un reinicio) |
 | `30-groups-service.yaml`, `31-balances-service.yaml` | Deployment + Service, con probes gRPC nativos (`grpc.health.v1`) |
