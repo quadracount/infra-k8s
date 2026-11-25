@@ -1,7 +1,6 @@
 # Desarrollo local. Se ejecuta desde infra-k8s, con todos los repos clonados en la misma carpeta:
 #   docker compose up --build
 # Las imágenes se llaman quadracount/<repo>:dev, igual que en los manifiestos de k8s/.
-# Falta mcp-server (Fase 5).
 name: quadracount
 
 x-rabbitmq-url: &rabbitmq-url amqp://${RABBITMQ_USER:-quadra}:${RABBITMQ_PASSWORD:-quadra}@rabbitmq:5672
@@ -19,6 +18,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    restart: unless-stopped
 
   rabbitmq:
     image: rabbitmq:4-management
@@ -34,6 +34,7 @@ services:
       interval: 5s
       timeout: 10s
       retries: 30
+    restart: unless-stopped
 
   activity-service:
     build: ../activity-service
@@ -105,6 +106,18 @@ services:
         condition: service_started
       balances-service:
         condition: service_started
+    restart: unless-stopped
+
+  mcp-server:
+    build: ../mcp-server
+    image: quadracount/mcp-server:dev
+    environment:
+      PORT: "3001"
+      BFF_INTERNAL_URL: http://bff-gateway:3000
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      # "fallback": parser por reglas. "llm": Claude (necesita ANTHROPIC_API_KEY)
+      LLM_MODE: ${LLM_MODE:-fallback}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     restart: unless-stopped
 
   frontend-app:

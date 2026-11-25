@@ -1,6 +1,4 @@
 # mcp-server (Node.js, puerto 3001): REST /automation y MCP en /mcp.
-# replicas: 0 hasta la Fase 5, porque todavía no hay servidor que escuche.
-# Para encenderlo: kubectl scale deployment mcp-server --replicas=1 -n quadracount
 apiVersion: v1
 kind: Service
 metadata:
@@ -26,7 +24,7 @@ metadata:
     app.kubernetes.io/name: mcp-server
     app.kubernetes.io/part-of: quadracount
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: mcp-server
@@ -59,6 +57,12 @@ spec:
               valueFrom:
                 # Opcional: sin la key, LLM_MODE=fallback sigue funcionando
                 secretKeyRef: { name: quadracount-secrets, key: ANTHROPIC_API_KEY, optional: true }
+          readinessProbe:
+            httpGet: { path: /health, port: 3001 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 3001 }
+            periodSeconds: 20
           resources:
             requests: { cpu: 50m, memory: 128Mi }
             limits: { memory: 384Mi }
