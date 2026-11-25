@@ -7,7 +7,7 @@
 # actual de kubectl). Las imágenes se llaman quadracount/<repo>:dev.
 set -eu
 
-IMAGES="activity-service balances-service bff-gateway frontend-quadracount groups-service"
+IMAGES="activity-service balances-service bff-gateway frontend-quadracount groups-service mcp-server"
 
 echo "== Construyendo imágenes (docker compose build)"
 docker compose build

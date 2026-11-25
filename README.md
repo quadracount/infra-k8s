@@ -27,7 +27,7 @@ docker compose logs -f activity-service
 docker compose down          # agregar -v para borrar también los datos de MongoDB
 ```
 
-Están MongoDB, RabbitMQ, groups-service, balances-service, activity-service, bff-gateway y el frontend (http://localhost:8080). Falta mcp-server (Fase 5).
+Están MongoDB, RabbitMQ, groups-service, balances-service, activity-service, bff-gateway, mcp-server y el frontend (http://localhost:8080).
 
 groups-service arranca con los datos de ejemplo de la sección 1 del plan: 6 usuarios (`martin@quadracount.dev`, `camila@…`, `sofia@…`, `diego@…`, `valentina@…`, `tomas@…`, todos con la contraseña `quadra123`), los 3 grupos de Martín, sus gastos y el pago de Diego. Saldos esperados en el depto: Martín +12.000, Camila +1.000, Sofía −5.000, Diego −8.000.
 
